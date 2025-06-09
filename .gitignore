@@ -1,0 +1,4 @@
+.idea/
+imgs_gen/
+logs/
+sketch_diffusion/__pycache__/
