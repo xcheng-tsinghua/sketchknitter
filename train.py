@@ -96,4 +96,6 @@ def create_argparser():
 
 
 if __name__ == "__main__":
+    os.makedirs('./imgs_gen')
+    os.makedirs('./logs')
     main()
