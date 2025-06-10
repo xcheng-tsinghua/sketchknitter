@@ -3,4 +3,6 @@ imgs_gen/
 logs/
 sketch_diffusion/__pycache__/
 model_trained/
-
+requirements.txt
+sample.sh
+train.sh
