@@ -6,7 +6,6 @@ import blobfile as bf
 import numpy as np
 import torch as th
 import torch.distributed as dist
-from torch.nn.parallel.distributed import DistributedDataParallel as DDP
 from torch.optim import AdamW
 
 from sketch_diffusion import logger
@@ -22,6 +21,7 @@ from .resample import LossAwareSampler, UniformSampler
 
 INITIAL_LOG_LOSS_SCALE = 20.0
 
+
 class TrainLoop:
     def __init__(
         self,
@@ -36,6 +36,7 @@ class TrainLoop:
         log_interval,
         save_interval,
         resume_checkpoint,
+        model_save_path,
         use_fp16=False,
         fp16_scale_growth=1e-3,
         schedule_sampler=None,
@@ -61,11 +62,11 @@ class TrainLoop:
         self.schedule_sampler = schedule_sampler or UniformSampler(diffusion)
         self.weight_decay = weight_decay
         self.lr_anneal_steps = lr_anneal_steps
+        self.model_save_path = model_save_path
 
         self.step = 0
         self.resume_step = 0
         self.global_batch = self.batch_size
-        # self.global_batch = self.batch_size * dist.get_world_size()
 
         self.model_params = list(self.model.parameters())
         self.master_params = self.model_params
@@ -77,24 +78,14 @@ class TrainLoop:
             self._setup_fp16()
 
         self.opt = AdamW(self.master_params, lr=self.lr, weight_decay=self.weight_decay)
-        if self.resume_step:
-            self._load_optimizer_state()
-            self.ema_params = [
-                self._load_ema_parameters(rate) for rate in self.ema_rate
-            ]
-        else:
-            self.ema_params = [
-                copy.deepcopy(self.master_params) for _ in range(len(self.ema_rate))
-            ]
+        self.ema_params = [
+            copy.deepcopy(self.master_params) for _ in range(len(self.ema_rate))
+        ]
 
         if th.cuda.is_available():
             self.use_ddp = True
             self.ddp_model = self.model
-            #     self.model,
-            #     broadcast_buffers=False,
-            #     bucket_cap_mb=128,
-            #     find_unused_parameters=False,
-            # )
+
         else:
             if dist.get_world_size() > 1:
                 logger.warn(
@@ -107,23 +98,10 @@ class TrainLoop:
     def _load_and_sync_parameters(self):
         resume_checkpoint = find_resume_checkpoint() or self.resume_checkpoint
 
-
     def _load_ema_parameters(self, rate):
         ema_params = copy.deepcopy(self.master_params)
 
         return ema_params
-
-    def _load_optimizer_state(self):
-        main_checkpoint = find_resume_checkpoint() or self.resume_checkpoint
-        opt_checkpoint = bf.join(
-            bf.dirname(main_checkpoint), f"opt{self.resume_step:06}.pt"
-        )
-        if bf.exists(opt_checkpoint):
-            logger.log(f"loading optimizer state from checkpoint: {opt_checkpoint}")
-            state_dict = dist_util.load_state_dict(
-                opt_checkpoint, map_location=dist_util.dev()
-            )
-            self.opt.load_state_dict(state_dict)
 
     def _setup_fp16(self):
         self.master_params = make_master_params(self.model_params)
@@ -141,7 +119,7 @@ class TrainLoop:
             if self.step % self.log_interval == 0:
                 logger.dumpkvs()
             if self.step % self.save_interval == 0:
-                # self.save()
+                self.save()
                 if os.environ.get("DIFFUSION_TRAINING_TEST", "") and self.step > 0:
                     return
             self.step += 1
@@ -240,30 +218,33 @@ class TrainLoop:
             logger.logkv("lg_loss_scale", self.lg_loss_scale)
     
     def save(self):
-        def save_checkpoint(rate, params):
-            state_dict = self._master_params_to_state_dict(params)
-            if dist.get_rank() == 0:
-                logger.log(f"saving model {rate}...")
-                if not rate:
-                    filename = f"model{(self.step+self.resume_step):06d}.pt"
-                else:
-                    filename = f"ema_{rate}_{(self.step+self.resume_step):06d}.pt"
-                with bf.BlobFile(bf.join(get_blob_logdir(), filename), "wb") as f:
-                    th.save(state_dict, f)
-                print('save model at : {}'.format(bf.join(get_blob_logdir(), filename)))
-
-        save_checkpoint(0, self.master_params)
-        for rate, params in zip(self.ema_rate, self.ema_params):
-            save_checkpoint(rate, params)
-
-        if dist.get_rank() == 0:
-            with bf.BlobFile(
-                bf.join(get_blob_logdir(), f"opt{(self.step+self.resume_step):06d}.pt"),
-                "wb",
-            ) as f:
-                th.save(self.opt.state_dict(), f)
-
-        dist.barrier()
+        th.save(self.model.state_dict(), self.model_save_path)
+        print(f'sketch knitter model save at: {self.model_save_path}')
+        #
+        # def save_checkpoint(rate, params):
+        #     state_dict = self._master_params_to_state_dict(params)
+        #     if dist.get_rank() == 0:
+        #         logger.log(f"saving model {rate}...")
+        #         if not rate:
+        #             filename = f"model{(self.step+self.resume_step):06d}.pt"
+        #         else:
+        #             filename = f"ema_{rate}_{(self.step+self.resume_step):06d}.pt"
+        #         with bf.BlobFile(bf.join(get_blob_logdir(), filename), "wb") as f:
+        #             th.save(state_dict, f)
+        #         print('save model at : {}'.format(bf.join(get_blob_logdir(), filename)))
+        #
+        # save_checkpoint(0, self.master_params)
+        # for rate, params in zip(self.ema_rate, self.ema_params):
+        #     save_checkpoint(rate, params)
+        #
+        # if dist.get_rank() == 0:
+        #     with bf.BlobFile(
+        #         bf.join(get_blob_logdir(), f"opt{(self.step+self.resume_step):06d}.pt"),
+        #         "wb",
+        #     ) as f:
+        #         th.save(self.opt.state_dict(), f)
+        #
+        # dist.barrier()
 
     def _master_params_to_state_dict(self, master_params):
         if self.use_fp16:

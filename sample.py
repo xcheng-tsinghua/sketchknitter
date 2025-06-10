@@ -7,7 +7,8 @@ from torchvision.utils import save_image
 import numpy as np
 import cv2
 
-from sketch_diffusion import dist_util, logger
+
+from sketch_diffusion import logger
 from sketch_diffusion.script_util import (
     NUM_CLASSES,
     model_and_diffusion_defaults,
@@ -66,7 +67,7 @@ def draw_three(sketch, window_name="google", padding=30,
             first_zero = False
             continue
         cv2.line(canvas, tuple(pen_now), tuple(pen_now + delta_x_y), color, thickness=thickness)
-        if int(state) == 1:  
+        if int(state.item()) == 1:
             first_zero = True
             if random_color:
                 color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
@@ -87,6 +88,7 @@ def bin_pen(x, pen_break=0.005):
                     result[i][j][2] = 0
     return result[:, :, :3]
 
+
 def main():
     args = create_argparser().parse_args()
 
@@ -96,7 +98,7 @@ def main():
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
 
-    dist_util.setup_dist()
+    # dist_util.setup_dist()
     logger.configure(args.log_dir)
 
     logger.log("creating model and diffusion...")
@@ -106,10 +108,8 @@ def main():
     #model, diffusion = create_model_and_diffusion_noise(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
-    model.load_state_dict(
-        dist_util.load_state_dict(args.model_path, map_location="cpu")
-    )
-    model.to(dist_util.dev())
+    model.load_state_dict(th.load(args.model_path))
+    model.cuda()
     model.eval()
 
     logger.log("sampling...")
@@ -118,7 +118,7 @@ def main():
         model_kwargs = {}
         if args.class_cond:
             classes = th.randint(
-                low=0, high=NUM_CLASSES, size=(args.batch_size,), device=dist_util.dev()
+                low=0, high=NUM_CLASSES, size=(args.batch_size,), device='cuda'
             )
             model_kwargs["y"] = classes
         sample_fn = (
@@ -146,13 +146,14 @@ def main():
 
     save_image(th.stack(all_images), os.path.join(args.save_path, 'output.png'))
 
+
 def create_argparser():
     defaults = dict(
         clip_denoised=True,
         num_samples=50,
         batch_size=16,
         use_ddim=True,
-        model_path="",
+        model_path=r'model_trained/sketchknitter.pth',
         log_dir=r'./logs',
         save_path=r'./imgs_gen',
         pen_break=0.1,

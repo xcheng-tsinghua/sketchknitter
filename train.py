@@ -66,6 +66,7 @@ def main():
         schedule_sampler=schedule_sampler,
         weight_decay=args.weight_decay,
         lr_anneal_steps=args.lr_anneal_steps,
+        model_save_path=args.model_save_path
     ).run_loop()
 
 
@@ -82,12 +83,13 @@ def create_argparser():
         batch_size=1024,
         microbatch=-1,  
         ema_rate="0.9999",  
-        log_interval=10,
-        save_interval=100,
+        log_interval=5,
+        save_interval=10,
         resume_checkpoint="",
         use_fp16=False,
         fp16_scale_growth=1e-3,
         log_dir='./logs',
+        model_save_path='model_trained/sketchknitter.pth'
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()
@@ -96,6 +98,6 @@ def create_argparser():
 
 
 if __name__ == "__main__":
-    os.makedirs('./imgs_gen')
-    os.makedirs('./logs')
+    os.makedirs('./imgs_gen', exist_ok=True)
+    os.makedirs('./logs', exist_ok=True)
     main()
