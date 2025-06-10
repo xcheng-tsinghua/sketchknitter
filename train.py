@@ -100,4 +100,5 @@ def create_argparser():
 if __name__ == "__main__":
     os.makedirs('./imgs_gen', exist_ok=True)
     os.makedirs('./logs', exist_ok=True)
+    os.makedirs('./model_trained', exist_ok=True)
     main()
