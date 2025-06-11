@@ -20,9 +20,7 @@ def main():
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
-    # dist_util.setup_dist()
     logger.configure(args.log_dir)
-
     logger.log("creating model and diffusion...")
     model, diffusion = create_model_and_diffusion( # you can change mode here
         **args_to_dict(args, model_and_diffusion_defaults().keys())

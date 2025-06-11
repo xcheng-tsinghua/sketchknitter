@@ -6,7 +6,7 @@ from torchvision import transforms
 from torchvision.utils import save_image
 import numpy as np
 import cv2
-
+from matplotlib import pyplot as plt
 
 from sketch_diffusion import logger
 from sketch_diffusion.script_util import (
@@ -44,8 +44,10 @@ def scale_sketch(sketch, size=(448, 448)):
     return sketch_rescale.astype("int16")
 
 
-def draw_three(sketch, window_name="google", padding=30,
-               random_color=False, time=1, show=False, img_size=256):
+def draw_three(sketch, window_name="google", padding=30, random_color=False, time=1, show=False, img_size=256):
+    """
+    实际上是隔一个点断开
+    """
     thickness = int(img_size * 0.025)
 
     sketch = scale_sketch(sketch, (img_size, img_size))  
@@ -60,7 +62,7 @@ def draw_three(sketch, window_name="google", padding=30,
     pen_now = np.array([start_x, start_y])
     first_zero = False
     for stroke in sketch:
-        delta_x_y = stroke[0:0 + 2]
+        delta_x_y = stroke[: 2]
         state = stroke[2:]
         if first_zero:  
             pen_now += delta_x_y
@@ -98,10 +100,7 @@ def main():
 
     logger.configure(args.log_dir)
     logger.log("creating model and diffusion...")
-    # different modes, if noise or acc method, please specify 'data', 'raster', and 'loss'.
     model, diffusion = create_model_and_diffusion(
-    #model, diffusion = create_model_and_diffusion_acc(
-    #model, diffusion = create_model_and_diffusion_noise(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
     model.load_state_dict(th.load(args.model_path))
@@ -129,18 +128,73 @@ def main():
         sample_all = th.cat((sample, pen_state), 2).cpu()
         sample_all = bin_pen(sample_all, args.pen_break)
 
+        save_idx = 0
         for sample in sample_all:
             sample = sample.numpy()
+
             sketch_cv = draw_three(sample, img_size=256)
-
-            # Convert the image to Torch tensor
             tensor = transforms.ToTensor()(sketch_cv)
-
             all_images.append(tensor)
 
-        np.savez(os.path.join(args.save_path, 'result.npz'), sample_all)
+            save_sketch_sketchknitter(sample, os.path.join(args.save_path, f'output_{save_idx}.png'))
+            save_idx += 1
+
+
+            # rel_coors = sample[:, :2]
+            # abs_coor = np.cumsum(rel_coors, axis=0)
+            # sample[:, :2] = abs_coor
+            #
+            # strokes = np.split(sample, np.where(sample[:, 2] == 0)[0] + 1)
+            # for c_stk in strokes:
+            #     plt.plot(c_stk[:, 0], -c_stk[:, 1])
+            #
+            # plt.savefig(os.path.join(args.save_path, f'output_{save_idx}.png'))
+            # plt.clf()
+            # plt.close()
+
+
+
+
+        # np.savez(os.path.join(args.save_path, 'result.npz'), sample_all)
 
     save_image(th.stack(all_images), os.path.join(args.save_path, 'output.png'))
+
+
+def save_sketch(sample, save_path):
+    rel_coors = sample[:, :2]
+    abs_coor = np.cumsum(rel_coors, axis=0)
+    sample[:, :2] = abs_coor
+
+    strokes = np.split(sample, np.where(sample[:, 2] == 0)[0] + 1)
+    for c_stk in strokes:
+        plt.plot(c_stk[:, 0], -c_stk[:, 1])
+
+    plt.axis('equal')
+    plt.savefig(save_path)
+    plt.clf()
+    plt.close()
+
+
+def save_sketch_sketchknitter(sample, save_path):
+    """
+    实际上是隔一个点空一段
+    """
+    rel_coors = sample[:, :2]
+    abs_coor = np.cumsum(rel_coors, axis=0)
+
+    # 将草图固定为偶数个点
+    if len(abs_coor) % 2 != 0:
+        abs_coor = abs_coor[:-1, :]
+
+    abs_coor = abs_coor[1: -1, :]
+
+    for i in range(len(abs_coor) // 2):
+        plt.plot(abs_coor[2 * i: 2 * i + 2, 0], -abs_coor[2 * i: 2 * i + 2, 1])
+
+    plt.axis('equal')
+    plt.savefig(save_path)
+    plt.clf()
+    plt.close()
 
 
 def create_argparser():
