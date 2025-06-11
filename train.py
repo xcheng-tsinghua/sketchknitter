@@ -75,7 +75,7 @@ def create_argparser():
         data_dir_sever=fr'/root/my_data/data_set/quickdraw/raw',
         data_dir_local=r'D:\document\DeepLearning\DataSet\quickdraw\raw',
         local='False',
-        category='apple.full.npz',  # e.g. apple.full.npz
+        category='bicycle.full.npz',  # e.g. apple.full.npz
         schedule_sampler="uniform",
         lr=1e-4,
         weight_decay=0.0,

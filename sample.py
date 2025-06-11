@@ -92,15 +92,11 @@ def bin_pen(x, pen_break=0.005):
 def main():
     args = create_argparser().parse_args()
 
-    if not os.path.exists(args.log_dir+'/test'):
-        os.makedirs(args.log_dir+'/test')
+    os.makedirs(args.log_dir + '/test', exist_ok=True)
     args.log_dir = args.log_dir + '/test'
-    if not os.path.exists(args.save_path):
-        os.makedirs(args.save_path)
+    os.makedirs(args.save_path, exist_ok=True)
 
-    # dist_util.setup_dist()
     logger.configure(args.log_dir)
-
     logger.log("creating model and diffusion...")
     # different modes, if noise or acc method, please specify 'data', 'raster', and 'loss'.
     model, diffusion = create_model_and_diffusion(
@@ -169,3 +165,4 @@ if __name__ == "__main__":
     os.makedirs('./logs', exist_ok=True)
     os.makedirs('./model_trained', exist_ok=True)
     main()
+
