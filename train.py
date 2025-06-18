@@ -88,7 +88,7 @@ def create_argparser():
         batch_size=1024,
         microbatch=-1,  
         ema_rate="0.9999",  
-        log_interval=5,
+        log_interval=10,
         save_interval=50,
         resume_checkpoint="",
         use_fp16=False,
