@@ -50,7 +50,7 @@ def main():
         batch_size=args.batch_size,
         image_size=args.image_size,
         # category=["sketchrnn_apple.full.npz"],  # replace your own datasets name.
-        category=[args.category],  # replace your own datasets name.
+        category=[args.category + '.full.npz'],  # replace your own datasets name.
         class_cond=False,
     )
 
@@ -71,7 +71,7 @@ def main():
         schedule_sampler=schedule_sampler,
         weight_decay=args.weight_decay,
         lr_anneal_steps=args.lr_anneal_steps,
-        model_save_path=args.model_save_path
+        model_save_path=args.model_save_path.replace('sketchknitter', f'sketchknitter_{args.category}_')
     ).run_loop()
 
 
@@ -80,7 +80,7 @@ def create_argparser():
         data_dir_sever=fr'/root/my_data/data_set/quickdraw/raw',
         data_dir_local=r'D:\document\DeepLearning\DataSet\quickdraw\raw',
         local='False',
-        category='apple.full.npz',  # e.g. apple.full.npz
+        category='apple',  # e.g. apple
         schedule_sampler="uniform",
         lr=1e-4,
         weight_decay=0.0,
