@@ -103,7 +103,7 @@ def main():
     model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
-    model.load_state_dict(th.load(args.model_path.replace('sketchknitter', f'sketchknitter_{args.category}_')))
+    model.load_state_dict(th.load(args.model_path.replace('sketchknitter', f'sketchknitter_{args.category}')))
     model.cuda()
     model.eval()
 

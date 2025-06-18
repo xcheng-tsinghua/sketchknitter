@@ -71,7 +71,7 @@ def main():
         schedule_sampler=schedule_sampler,
         weight_decay=args.weight_decay,
         lr_anneal_steps=args.lr_anneal_steps,
-        model_save_path=args.model_save_path.replace('sketchknitter', f'sketchknitter_{args.category}_')
+        model_save_path=args.model_save_path.replace('sketchknitter', f'sketchknitter_{args.category}')
     ).run_loop()
 
 
