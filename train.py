@@ -28,8 +28,8 @@ def main():
     )
 
     try:
-        model.load_state_dict(torch.load(args.model_save_path))
-        print('training from exist model: ' + args.model_save_path)
+        model.load_state_dict(torch.load(args.model_save_path.replace('sketchknitter', f'sketchknitter_{args.category}')))
+        print('training from exist model: ' + args.model_save_path.replace('sketchknitter', f'sketchknitter_{args.category}'))
     except:
         print('no existing model, training from scratch')
 

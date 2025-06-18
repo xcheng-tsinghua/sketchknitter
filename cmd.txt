@@ -3,3 +3,8 @@ cd ./my_data/networks/sketchknitter/
 conda activate dp
 
 git status && git add . && git commit -m "change" && git push origin main
+
+python train.py --category=moon && python train.py --category=book && python train.py --category=shark && python train.py --category=angel
+
+
+
