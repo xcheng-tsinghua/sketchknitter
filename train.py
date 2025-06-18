@@ -1,5 +1,6 @@
 import argparse
 import os
+import torch
 
 from sketch_diffusion import logger
 from sketch_diffusion.image_datasets import load_data
@@ -22,9 +23,15 @@ def main():
 
     logger.configure(args.log_dir)
     logger.log("creating model and diffusion...")
-    model, diffusion = create_model_and_diffusion( # you can change mode here
+    model, diffusion = create_model_and_diffusion(  # you can change mode here
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
+
+    try:
+        model.load_state_dict(torch.load(args.model_save_path))
+        print('training from exist model: ' + args.model_save_path)
+    except:
+        print('no existing model, training from scratch')
 
     model.cuda()
     schedule_sampler = create_named_schedule_sampler(args.schedule_sampler, diffusion)

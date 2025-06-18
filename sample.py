@@ -109,7 +109,12 @@ def main():
 
     logger.log("sampling...")
     all_images = []
-    while len(all_images) * args.batch_size < args.num_samples:
+    sample_loop = 0
+    save_idx = 0
+    while sample_loop * args.batch_size < args.num_samples:
+        print(f'sampling [{args.batch_size * sample_loop} to {args.batch_size * (sample_loop + 1)})')
+        sample_loop += 1
+
         model_kwargs = {}
         if args.class_cond:
             classes = th.randint(
@@ -128,7 +133,6 @@ def main():
         sample_all = th.cat((sample, pen_state), 2).cpu()
         sample_all = bin_pen(sample_all, args.pen_break)
 
-        save_idx = 0
         for sample in sample_all:
             sample = sample.numpy()
 
@@ -138,7 +142,6 @@ def main():
 
             save_sketch_sketchknitter(sample, os.path.join(args.save_path, f'output_{save_idx}.png'))
             save_idx += 1
-
 
             # rel_coors = sample[:, :2]
             # abs_coor = np.cumsum(rel_coors, axis=0)
@@ -151,9 +154,6 @@ def main():
             # plt.savefig(os.path.join(args.save_path, f'output_{save_idx}.png'))
             # plt.clf()
             # plt.close()
-
-
-
 
         # np.savez(os.path.join(args.save_path, 'result.npz'), sample_all)
 
@@ -192,6 +192,7 @@ def save_sketch_sketchknitter(sample, save_path):
         plt.plot(abs_coor[2 * i: 2 * i + 2, 0], -abs_coor[2 * i: 2 * i + 2, 1])
 
     plt.axis('equal')
+    plt.axis('off')
     plt.savefig(save_path)
     plt.clf()
     plt.close()
