@@ -7,6 +7,6 @@ git status && git add . && git commit -m "change" && git push origin main
 python train.py --category=moon && python train.py --category=book && python train.py --category=shark && python train.py --category=angel
 nohup python train.py --category=apple
 
-nohup bash -c 'python sample.py --category=apple && python sample.py --category=moon && python sample.py --category=book && python sample.py --category=shark && python sample.py --category=angel && python sample.py --category=bicycle &&' &
+nohup bash -c 'python sample.py --category=apple && python sample.py --category=moon && python sample.py --category=book && python sample.py --category=shark && python sample.py --category=angel && python sample.py --category=bicycle' &
 
 

@@ -103,7 +103,9 @@ def main():
     model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
-    model.load_state_dict(th.load(args.model_path.replace('sketchknitter', f'sketchknitter_{args.category}')))
+    weight_path = args.model_path.replace('sketchknitter', f'sketchknitter_{args.category}')
+    model.load_state_dict(th.load(weight_path))
+    print(f'loading weights from {weight_path}')
     model.cuda()
     model.eval()
 
