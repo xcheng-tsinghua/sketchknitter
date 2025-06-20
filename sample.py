@@ -140,7 +140,7 @@ def main():
             tensor = transforms.ToTensor()(sketch_cv)
             all_images.append(tensor)
 
-            save_sketch_sketchknitter(sample, os.path.join(args.save_path, f'output_{save_idx}.png'))
+            save_sketch_sketchknitter(sample, os.path.join(args.save_path, args.category, f'output_{save_idx}.png'))
             save_idx += 1
 
             # rel_coors = sample[:, :2]
@@ -201,8 +201,8 @@ def save_sketch_sketchknitter(sample, save_path):
 def create_argparser():
     defaults = dict(
         clip_denoised=True,
-        num_samples=50,
-        batch_size=16,
+        num_samples=1000,
+        batch_size=20,
         use_ddim=True,
         model_path=r'model_trained/sketchknitter.pth',
         log_dir=r'./logs',
