@@ -104,7 +104,7 @@ def main():
     model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
-    weight_path = os.path.join(f'./model_trained/sketchknitter_{args.category}.pth')
+    weight_path = f'./model_trained/sketchknitter_{args.category}.pth'
     model.load_state_dict(th.load(weight_path))
     print(f'loading weights from {weight_path}')
     model.cuda()
@@ -204,14 +204,13 @@ def save_sketch_sketchknitter(sample, save_path):
 def create_argparser():
     defaults = dict(
         clip_denoised=True,
-        num_samples=1000,
+        num_samples=20,
         batch_size=20,
         use_ddim=True,
-        # model_path=r'model_trained/sketchknitter_apple.pth',
         log_dir=r'./logs',
         save_path=r'./imgs_gen',
         pen_break=0.1,
-        category='apple'
+        category='moon'
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()

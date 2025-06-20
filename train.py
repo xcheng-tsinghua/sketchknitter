@@ -27,9 +27,10 @@ def main():
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
 
+    model_save_path = f'./model_trained/sketchknitter_{args.category}.pth'
     try:
-        model.load_state_dict(torch.load(args.model_save_path.replace('sketchknitter', f'sketchknitter_{args.category}')))
-        print('training from exist model: ' + args.model_save_path.replace('sketchknitter', f'sketchknitter_{args.category}'))
+        model.load_state_dict(torch.load(model_save_path))
+        print('training from exist model: ' + model_save_path)
     except:
         print('no existing model, training from scratch')
 
@@ -71,7 +72,7 @@ def main():
         schedule_sampler=schedule_sampler,
         weight_decay=args.weight_decay,
         lr_anneal_steps=args.lr_anneal_steps,
-        model_save_path=args.model_save_path.replace('sketchknitter', f'sketchknitter_{args.category}')
+        model_save_path=model_save_path
     ).run_loop()
 
 
@@ -94,7 +95,6 @@ def create_argparser():
         use_fp16=False,
         fp16_scale_growth=1e-3,
         log_dir='./logs',
-        model_save_path='model_trained/sketchknitter_apple.pth'
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()
