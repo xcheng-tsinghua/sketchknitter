@@ -94,7 +94,7 @@ def create_argparser():
         use_fp16=False,
         fp16_scale_growth=1e-3,
         log_dir='./logs',
-        model_save_path='model_trained/sketchknitter.pth'
+        model_save_path='model_trained/sketchknitter_apple.pth'
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()
