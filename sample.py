@@ -94,6 +94,7 @@ def bin_pen(x, pen_break=0.005):
 def main():
     args = create_argparser().parse_args()
 
+    os.makedirs(os.path.join(args.save_path, args.category), exist_ok=True)
     os.makedirs(args.log_dir + '/test', exist_ok=True)
     args.log_dir = args.log_dir + '/test'
     os.makedirs(args.save_path, exist_ok=True)
@@ -159,7 +160,7 @@ def main():
 
         # np.savez(os.path.join(args.save_path, 'result.npz'), sample_all)
 
-    save_image(th.stack(all_images), os.path.join(args.save_path, 'output.png'))
+    save_image(th.stack(all_images), os.path.join(args.save_path, args.category, 'output.png'))
 
 
 def save_sketch(sample, save_path):
