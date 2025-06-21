@@ -204,7 +204,7 @@ def save_sketch_sketchknitter(sample, save_path):
 def create_argparser():
     defaults = dict(
         clip_denoised=True,
-        num_samples=20,
+        num_samples=1000,
         batch_size=20,
         use_ddim=True,
         log_dir=r'./logs',
