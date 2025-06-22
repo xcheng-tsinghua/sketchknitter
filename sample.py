@@ -160,7 +160,7 @@ def main():
 
         # np.savez(os.path.join(args.save_path, 'result.npz'), sample_all)
 
-    save_image(th.stack(all_images), os.path.join(args.save_path, args.category, 'output.png'))
+    save_image(th.stack(all_images), os.path.join(args.save_path, f'output_{args.category}.png'))
 
 
 def save_sketch(sample, save_path):
