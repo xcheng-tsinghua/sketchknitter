@@ -160,7 +160,7 @@ def main():
 
         # np.savez(os.path.join(args.save_path, 'result.npz'), sample_all)
 
-    save_image(th.stack(all_images), os.path.join(args.save_path, f'output_{args.category}.png'))
+    # save_image(th.stack(all_images), os.path.join(args.save_path, f'output_{args.category}.png'))
 
 
 def save_sketch(sample, save_path):
@@ -178,7 +178,7 @@ def save_sketch(sample, save_path):
     plt.close()
 
 
-def save_sketch_sketchknitter(sample, save_path):
+def save_sketch_sketchknitter(sample, save_path, linewidth=5):
     """
     实际上是隔一个点空一段
     """
@@ -192,7 +192,7 @@ def save_sketch_sketchknitter(sample, save_path):
     abs_coor = abs_coor[1: -1, :]
 
     for i in range(len(abs_coor) // 2):
-        plt.plot(abs_coor[2 * i: 2 * i + 2, 0], -abs_coor[2 * i: 2 * i + 2, 1])
+        plt.plot(abs_coor[2 * i: 2 * i + 2, 0], -abs_coor[2 * i: 2 * i + 2, 1], linewidth=linewidth)
 
     plt.axis('equal')
     plt.axis('off')
