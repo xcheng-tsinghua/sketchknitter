@@ -1,6 +1,4 @@
-
-cd ./my_data/networks/sketchknitter/
-conda activate dp
+cd ./my_data/networks/sketchknitter/ && conda activate dp
 
 git status && git add . && git commit -m "change" && git push origin main
 
