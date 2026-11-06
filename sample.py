@@ -206,7 +206,7 @@ def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--clip_denoised", type=str2bool, default=True)
     parser.add_argument("--num_samples", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=20)
+    parser.add_argument("--batch_size", type=int, default=200)
     parser.add_argument("--use_ddim", type=str2bool, default=True)
     parser.add_argument("--log_dir", type=str, default='./logs')
     parser.add_argument("--save_path", type=str, default='./imgs_gen')

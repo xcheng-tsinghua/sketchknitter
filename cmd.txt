@@ -23,3 +23,9 @@ python train.py --category=angel && \
 python train.py --category=bicycle
 
 
+python sample.py --category=apple && \
+python sample.py --category=moon && \
+python sample.py --category=book && \
+python sample.py --category=shark && \
+python sample.py --category=angel && \
+python sample.py --category=bicycle
