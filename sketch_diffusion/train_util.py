@@ -7,6 +7,7 @@ import numpy as np
 import torch as th
 import torch.distributed as dist
 from torch.optim import AdamW
+from tqdm.auto import tqdm
 
 from sketch_diffusion import logger
 from .fp16_util import (
@@ -63,6 +64,7 @@ class TrainLoop:
         self.weight_decay = weight_decay
         self.lr_anneal_steps = lr_anneal_steps
         self.model_save_path = model_save_path
+        os.makedirs(os.path.dirname(os.path.abspath(self.model_save_path)), exist_ok=True)
 
         self.step = 0
         self.resume_step = 0
@@ -108,23 +110,32 @@ class TrainLoop:
         self.model.convert_to_fp16()
     
     def run_loop(self):
-        while (
-            self.step + self.resume_step < 50001
-        ):
-            batch, _ = next(self.data)
-            batch = batch.to('cuda')
-            if self.use_fp16:
-                batch = batch.type(th.FloatTensor)
-            self.run_step(batch, {})
-            if self.step % self.log_interval == 0:
-                logger.dumpkvs()
-            if self.step % self.save_interval == 0:
+        total_steps = 50001
+        with tqdm(
+            total=total_steps, initial=self.step + self.resume_step,
+            desc="Training", unit="step", dynamic_ncols=True,
+        ) as progress:
+            while self.step + self.resume_step < total_steps:
+                batch, _ = next(self.data)
+                batch = batch.to('cuda')
+                if self.use_fp16:
+                    batch = batch.type(th.FloatTensor)
+                self.run_step(batch, {})
+                if self.step % self.log_interval == 0 or self.step + self.resume_step == total_steps - 1:
+                    metrics = logger.dumpkvs(stdout=False)
+                    progress.set_postfix(
+                        {key: f"{metrics[key]:.4g}" for key in ("loss", "mse", "pen_state", "grad_norm") if key in metrics},
+                        refresh=False,
+                    )
+                if self.step % self.save_interval == 0:
+                    self.save()
+                    if os.environ.get("DIFFUSION_TRAINING_TEST", "") and self.step > 0:
+                        progress.update(1)
+                        return
+                self.step += 1
+                progress.update(1)
+            if (self.step - 1) % self.save_interval != 0:
                 self.save()
-                if os.environ.get("DIFFUSION_TRAINING_TEST", "") and self.step > 0:
-                    return
-            self.step += 1
-        if (self.step - 1) % self.save_interval != 0:
-            self.save()
     
     def run_step(self, batch, cond):
         self.forward_backward(batch, cond)
@@ -218,8 +229,9 @@ class TrainLoop:
             logger.logkv("lg_loss_scale", self.lg_loss_scale)
     
     def save(self):
+        os.makedirs(os.path.dirname(os.path.abspath(self.model_save_path)), exist_ok=True)
         th.save(self.model.state_dict(), self.model_save_path)
-        print(f'sketch knitter model save at: {self.model_save_path}')
+        tqdm.write(f'sketch knitter model save at: {self.model_save_path}')
         #
         # def save_checkpoint(rate, params):
         #     state_dict = self._master_params_to_state_dict(params)
