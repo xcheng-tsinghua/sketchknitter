@@ -1,5 +1,7 @@
 import argparse
 import os
+import random
+import numpy as np
 import torch
 
 from sketch_diffusion import logger
@@ -9,14 +11,23 @@ from sketch_diffusion.script_util import (
     model_and_diffusion_defaults,
     create_model_and_diffusion, # you can change mode here
     args_to_dict,
-    add_dict_to_argparser,
+    str2bool,
 )
 from sketch_diffusion.train_util import TrainLoop
 
 
 def main():
     args = create_argparser().parse_args()
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
     print(args)
+
+    model_dir = f'./model_trained_seed_{args.seed}'
+    os.makedirs(model_dir, exist_ok=True)
 
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
@@ -27,7 +38,7 @@ def main():
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
 
-    model_save_path = f'./model_trained/sketchknitter_{args.category}.pth'
+    model_save_path = os.path.join(model_dir, f'sketchknitter_{args.category}.pth')
     try:
         model.load_state_dict(torch.load(model_save_path))
         print('training from exist model: ' + model_save_path)
@@ -77,33 +88,46 @@ def main():
 
 
 def create_argparser():
-    defaults = dict(
-        data_dir_sever=fr'/root/my_data/data_set/quickdraw/raw',
-        data_dir_local=r'D:\document\DeepLearning\DataSet\quickdraw\raw',
-        local='False',
-        category='apple',  # e.g. apple
-        schedule_sampler="uniform",
-        lr=1e-4,
-        weight_decay=0.0,
-        lr_anneal_steps=0,
-        batch_size=1024,
-        microbatch=-1,  
-        ema_rate="0.9999",  
-        log_interval=10,
-        save_interval=50,
-        resume_checkpoint="",
-        use_fp16=False,
-        fp16_scale_growth=1e-3,
-        log_dir='./logs',
-    )
-    defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()
-    add_dict_to_argparser(parser, defaults)
+    parser.add_argument("--data_dir_sever", type=str, default='/root/my_data/data_set/quickdraw/raw')
+    parser.add_argument("--data_dir_local", type=str, default='D:\\document\\DeepLearning\\DataSet\\quickdraw\\raw')
+    parser.add_argument("--local", type=str, default='False')
+    parser.add_argument("--category", type=str, default='apple')
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--schedule_sampler", type=str, default='uniform')
+    parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--weight_decay", type=float, default=0.0)
+    parser.add_argument("--lr_anneal_steps", type=int, default=0)
+    parser.add_argument("--batch_size", type=int, default=1024)
+    parser.add_argument("--microbatch", type=int, default=-1)
+    parser.add_argument("--ema_rate", type=str, default='0.9999')
+    parser.add_argument("--log_interval", type=int, default=10)
+    parser.add_argument("--save_interval", type=int, default=50)
+    parser.add_argument("--resume_checkpoint", type=str, default='')
+    parser.add_argument("--use_fp16", type=str2bool, default=False)
+    parser.add_argument("--fp16_scale_growth", type=float, default=0.001)
+    parser.add_argument("--log_dir", type=str, default='./logs')
+    parser.add_argument("--image_size", type=int, default=96)
+    parser.add_argument("--num_channels", type=int, default=96)
+    parser.add_argument("--num_res_blocks", type=int, default=3)
+    parser.add_argument("--num_heads", type=int, default=4)
+    parser.add_argument("--num_heads_upsample", type=int, default=-1)
+    parser.add_argument("--attention_resolutions", type=str, default='16,8')
+    parser.add_argument("--dropout", type=float, default=0.0)
+    parser.add_argument("--learn_sigma", type=str2bool, default=False)
+    parser.add_argument("--sigma_small", type=str2bool, default=False)
+    parser.add_argument("--class_cond", type=str2bool, default=False)
+    parser.add_argument("--diffusion_steps", type=int, default=1000)
+    parser.add_argument("--noise_schedule", type=str, default='linear')
+    parser.add_argument("--timestep_respacing", type=str, default='')
+    parser.add_argument("--use_kl", type=str2bool, default=False)
+    parser.add_argument("--predict_xstart", type=str2bool, default=False)
+    parser.add_argument("--rescale_timesteps", type=str2bool, default=True)
+    parser.add_argument("--rescale_learned_sigmas", type=str2bool, default=True)
+    parser.add_argument("--use_checkpoint", type=str2bool, default=False)
+    parser.add_argument("--use_scale_shift_norm", type=str2bool, default=True)
     return parser
 
 
 if __name__ == "__main__":
-    os.makedirs('./imgs_gen', exist_ok=True)
-    os.makedirs('./logs', exist_ok=True)
-    os.makedirs('./model_trained', exist_ok=True)
     main()

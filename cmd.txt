@@ -12,3 +12,10 @@ nohup python train.py --category=apple
 nohup bash -c 'python sample.py --category=apple && python sample.py --category=moon && python sample.py --category=book && python sample.py --category=shark && python sample.py --category=angel && python sample.py --category=bicycle' &
 
 
+# 随机种子
+随机种子： 92,48,69,83,5
+
+
+
+
+

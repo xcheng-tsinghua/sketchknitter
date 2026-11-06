@@ -16,7 +16,7 @@ from sketch_diffusion.script_util import (
     create_model_and_diffusion,
     # create_model_and_diffusion_acc
     # create_model_and_diffusion_noise,
-    add_dict_to_argparser,
+    str2bool,
     args_to_dict,
 )
 
@@ -93,6 +93,13 @@ def bin_pen(x, pen_break=0.005):
 
 def main():
     args = create_argparser().parse_args()
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    th.manual_seed(args.seed)
+    th.cuda.manual_seed_all(args.seed)
+    th.backends.cudnn.benchmark = False
+    th.backends.cudnn.deterministic = True
+    args.save_path = f'{os.path.normpath(args.save_path)}_seed_{args.seed}'
 
     os.makedirs(os.path.join(args.save_path, args.category), exist_ok=True)
     os.makedirs(args.log_dir + '/test', exist_ok=True)
@@ -104,7 +111,7 @@ def main():
     model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
-    weight_path = f'./model_trained/sketchknitter_{args.category}.pth'
+    weight_path = f'./model_trained_seed_{args.seed}/sketchknitter_{args.category}.pth'
     model.load_state_dict(th.load(weight_path))
     print(f'loading weights from {weight_path}')
     model.cuda()
@@ -202,25 +209,38 @@ def save_sketch_sketchknitter(sample, save_path, linewidth=5):
 
 
 def create_argparser():
-    defaults = dict(
-        clip_denoised=True,
-        num_samples=1000,
-        batch_size=20,
-        use_ddim=True,
-        log_dir=r'./logs',
-        save_path=r'./imgs_gen',
-        pen_break=0.1,
-        category='moon'
-    )
-    defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()
-    add_dict_to_argparser(parser, defaults)
+    parser.add_argument("--clip_denoised", type=str2bool, default=True)
+    parser.add_argument("--num_samples", type=int, default=1000)
+    parser.add_argument("--batch_size", type=int, default=20)
+    parser.add_argument("--use_ddim", type=str2bool, default=True)
+    parser.add_argument("--log_dir", type=str, default='./logs')
+    parser.add_argument("--save_path", type=str, default='./imgs_gen')
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--pen_break", type=float, default=0.1)
+    parser.add_argument("--category", type=str, default='moon')
+    parser.add_argument("--image_size", type=int, default=96)
+    parser.add_argument("--num_channels", type=int, default=96)
+    parser.add_argument("--num_res_blocks", type=int, default=3)
+    parser.add_argument("--num_heads", type=int, default=4)
+    parser.add_argument("--num_heads_upsample", type=int, default=-1)
+    parser.add_argument("--attention_resolutions", type=str, default='16,8')
+    parser.add_argument("--dropout", type=float, default=0.0)
+    parser.add_argument("--learn_sigma", type=str2bool, default=False)
+    parser.add_argument("--sigma_small", type=str2bool, default=False)
+    parser.add_argument("--class_cond", type=str2bool, default=False)
+    parser.add_argument("--diffusion_steps", type=int, default=1000)
+    parser.add_argument("--noise_schedule", type=str, default='linear')
+    parser.add_argument("--timestep_respacing", type=str, default='')
+    parser.add_argument("--use_kl", type=str2bool, default=False)
+    parser.add_argument("--predict_xstart", type=str2bool, default=False)
+    parser.add_argument("--rescale_timesteps", type=str2bool, default=True)
+    parser.add_argument("--rescale_learned_sigmas", type=str2bool, default=True)
+    parser.add_argument("--use_checkpoint", type=str2bool, default=False)
+    parser.add_argument("--use_scale_shift_norm", type=str2bool, default=True)
     return parser
 
 
 if __name__ == "__main__":
-    os.makedirs('./imgs_gen', exist_ok=True)
-    os.makedirs('./logs', exist_ok=True)
-    os.makedirs('./model_trained', exist_ok=True)
     main()
 
