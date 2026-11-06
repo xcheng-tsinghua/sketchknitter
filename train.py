@@ -1,7 +1,5 @@
 import argparse
 import os
-import random
-import numpy as np
 import torch
 
 from sketch_diffusion import logger
@@ -18,15 +16,9 @@ from sketch_diffusion.train_util import TrainLoop
 
 def main():
     args = create_argparser().parse_args()
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
     print(args)
 
-    model_dir = f'./model_trained_seed_{args.seed}'
+    model_dir = './model_trained'
     os.makedirs(model_dir, exist_ok=True)
 
     if not os.path.exists(args.log_dir):
@@ -86,6 +78,15 @@ def main():
         model_save_path=model_save_path
     ).run_loop()
 
+    # Reuse the final trained model for all five sampling runs.
+    from sample import generate_samples_archive
+
+    model.float()
+    generate_samples_archive(
+        model, diffusion, category=args.category, image_size=args.image_size,
+        class_cond=args.class_cond,
+    )
+
 
 def create_argparser():
     parser = argparse.ArgumentParser()
@@ -93,7 +94,6 @@ def create_argparser():
     parser.add_argument("--data_dir_local", type=str, default='D:\\document\\DeepLearning\\DataSet\\quickdraw\\raw')
     parser.add_argument("--local", type=str, default='False')
     parser.add_argument("--category", type=str, default='apple')
-    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--schedule_sampler", type=str, default='uniform')
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--weight_decay", type=float, default=0.0)

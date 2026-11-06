@@ -1,9 +1,9 @@
 import random
 import argparse
 import os
+import io
+import zipfile
 import torch as th
-from torchvision import transforms
-from torchvision.utils import save_image
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
@@ -91,83 +91,77 @@ def bin_pen(x, pen_break=0.005):
     return result[:, :, :3]
 
 
+SAMPLING_SEEDS = (92, 48, 69, 83, 5)
+
+
+def generate_samples_archive(
+    model, diffusion, *, category, image_size, class_cond=False,
+    save_path='./imgs_gen', num_samples=1000, batch_size=20,
+    use_ddim=True, clip_denoised=True, pen_break=0.1,
+):
+    """Render all seeds into an in-memory ZIP, then save the archive once."""
+    if batch_size <= 0 or num_samples <= 0:
+        raise ValueError('batch_size and num_samples must be positive')
+    model.eval()
+    device = next(model.parameters()).device
+    sample_fn = diffusion.ddim_sample_loop if use_ddim else diffusion.p_sample_loop
+    archive_path = os.path.join(save_path, f'{category}_seeds_92_48_69_83_5.zip')
+    with io.BytesIO() as archive_buffer:
+        with zipfile.ZipFile(archive_buffer, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+            with th.no_grad():
+                for seed in SAMPLING_SEEDS:
+                    random.seed(seed)
+                    np.random.seed(seed)
+                    th.manual_seed(seed)
+                    th.cuda.manual_seed_all(seed)
+                    th.backends.cudnn.benchmark = False
+                    th.backends.cudnn.deterministic = True
+                    for start in range(0, num_samples, batch_size):
+                        count = min(batch_size, num_samples - start)
+                        print(f'seed {seed}: sampling [{start} to {start + count})')
+                        model_kwargs = {}
+                        if class_cond:
+                            model_kwargs['y'] = th.randint(
+                                low=0, high=NUM_CLASSES, size=(count,), device=device,
+                            )
+                        sample, pen_state, _ = sample_fn(
+                            model, (count, image_size, 2),
+                            clip_denoised=clip_denoised, model_kwargs=model_kwargs,
+                        )
+                        sketches = bin_pen(th.cat((sample, pen_state), 2).cpu(), pen_break)
+                        for index, sketch in enumerate(sketches, start=start):
+                            with io.BytesIO() as image_buffer:
+                                save_sketch_sketchknitter(sketch.numpy(), image_buffer)
+                                archive.writestr(
+                                    f'{category}/seed_{seed}/output_{index}.png',
+                                    image_buffer.getvalue(),
+                                )
+        os.makedirs(save_path, exist_ok=True)
+        with open(archive_path, 'wb') as output:
+            with archive_buffer.getbuffer() as archive_data:
+                output.write(archive_data)
+    print(f'Saved {len(SAMPLING_SEEDS) * num_samples} sketches to {archive_path}')
+    return archive_path
+
+
 def main():
     args = create_argparser().parse_args()
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    th.manual_seed(args.seed)
-    th.cuda.manual_seed_all(args.seed)
-    th.backends.cudnn.benchmark = False
-    th.backends.cudnn.deterministic = True
-    args.save_path = f'{os.path.normpath(args.save_path)}_seed_{args.seed}'
-
-    os.makedirs(os.path.join(args.save_path, args.category), exist_ok=True)
-    os.makedirs(args.log_dir + '/test', exist_ok=True)
-    args.log_dir = args.log_dir + '/test'
-    os.makedirs(args.save_path, exist_ok=True)
-
-    logger.configure(args.log_dir)
+    logger.configure(os.path.join(args.log_dir, 'test'))
     logger.log("creating model and diffusion...")
     model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
-    weight_path = f'./model_trained_seed_{args.seed}/sketchknitter_{args.category}.pth'
+    weight_path = f'./model_trained/sketchknitter_{args.category}.pth'
     model.load_state_dict(th.load(weight_path))
     print(f'loading weights from {weight_path}')
     model.cuda()
-    model.eval()
-
-    logger.log("sampling...")
-    all_images = []
-    sample_loop = 0
-    save_idx = 0
-    while sample_loop * args.batch_size < args.num_samples:
-        print(f'sampling [{args.batch_size * sample_loop} to {args.batch_size * (sample_loop + 1)})')
-        sample_loop += 1
-
-        model_kwargs = {}
-        if args.class_cond:
-            classes = th.randint(
-                low=0, high=NUM_CLASSES, size=(args.batch_size,), device='cuda'
-            )
-            model_kwargs["y"] = classes
-        sample_fn = (
-            diffusion.p_sample_loop if not args.use_ddim else diffusion.ddim_sample_loop
-        )
-        sample, pen_state, _ = sample_fn(
-            model,
-            (args.batch_size, args.image_size, 2),
-            clip_denoised=args.clip_denoised,
-            model_kwargs=model_kwargs,
-        )
-        sample_all = th.cat((sample, pen_state), 2).cpu()
-        sample_all = bin_pen(sample_all, args.pen_break)
-
-        for sample in sample_all:
-            sample = sample.numpy()
-
-            sketch_cv = draw_three(sample, img_size=256)
-            tensor = transforms.ToTensor()(sketch_cv)
-            all_images.append(tensor)
-
-            save_sketch_sketchknitter(sample, os.path.join(args.save_path, args.category, f'output_{save_idx}.png'))
-            save_idx += 1
-
-            # rel_coors = sample[:, :2]
-            # abs_coor = np.cumsum(rel_coors, axis=0)
-            # sample[:, :2] = abs_coor
-            #
-            # strokes = np.split(sample, np.where(sample[:, 2] == 0)[0] + 1)
-            # for c_stk in strokes:
-            #     plt.plot(c_stk[:, 0], -c_stk[:, 1])
-            #
-            # plt.savefig(os.path.join(args.save_path, f'output_{save_idx}.png'))
-            # plt.clf()
-            # plt.close()
-
-        # np.savez(os.path.join(args.save_path, 'result.npz'), sample_all)
-
-    # save_image(th.stack(all_images), os.path.join(args.save_path, f'output_{args.category}.png'))
+    generate_samples_archive(
+        model, diffusion, category=args.category, image_size=args.image_size,
+        class_cond=args.class_cond, save_path=args.save_path,
+        num_samples=args.num_samples, batch_size=args.batch_size,
+        use_ddim=args.use_ddim, clip_denoised=args.clip_denoised,
+        pen_break=args.pen_break,
+    )
 
 
 def save_sketch(sample, save_path):
@@ -180,7 +174,7 @@ def save_sketch(sample, save_path):
         plt.plot(c_stk[:, 0], -c_stk[:, 1])
 
     plt.axis('equal')
-    plt.savefig(save_path)
+    plt.savefig(save_path, format='png')
     plt.clf()
     plt.close()
 
@@ -203,7 +197,7 @@ def save_sketch_sketchknitter(sample, save_path, linewidth=5):
 
     plt.axis('equal')
     plt.axis('off')
-    plt.savefig(save_path)
+    plt.savefig(save_path, format='png')
     plt.clf()
     plt.close()
 
@@ -216,7 +210,6 @@ def create_argparser():
     parser.add_argument("--use_ddim", type=str2bool, default=True)
     parser.add_argument("--log_dir", type=str, default='./logs')
     parser.add_argument("--save_path", type=str, default='./imgs_gen')
-    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--pen_break", type=float, default=0.1)
     parser.add_argument("--category", type=str, default='moon')
     parser.add_argument("--image_size", type=int, default=96)
