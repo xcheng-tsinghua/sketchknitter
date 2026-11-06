@@ -14,6 +14,11 @@ nohup bash -c 'python sample.py --category=apple && python sample.py --category=
 随机种子： 92,48,69,83,5
 
 
+python train.py --category=
 
-
-
+python train.py --category=apple && \
+python train.py --category=moon && \
+python train.py --category=book && \
+python train.py --category=shark && \
+python train.py --category=angel && \
+python train.py --category=bicycle
