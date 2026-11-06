@@ -98,7 +98,7 @@ def create_argparser():
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--weight_decay", type=float, default=0.0)
     parser.add_argument("--lr_anneal_steps", type=int, default=0)
-    parser.add_argument("--batch_size", type=int, default=1024)
+    parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--microbatch", type=int, default=-1)
     parser.add_argument("--ema_rate", type=str, default='0.9999')
     parser.add_argument("--log_interval", type=int, default=10)
