@@ -102,7 +102,7 @@ def create_argparser():
     parser.add_argument("--microbatch", type=int, default=-1)
     parser.add_argument("--ema_rate", type=str, default='0.9999')
     parser.add_argument("--log_interval", type=int, default=10)
-    parser.add_argument("--save_interval", type=int, default=50)
+    parser.add_argument("--save_interval", type=int, default=100)
     parser.add_argument("--resume_checkpoint", type=str, default='')
     parser.add_argument("--use_fp16", type=str2bool, default=False)
     parser.add_argument("--fp16_scale_growth", type=float, default=0.001)
