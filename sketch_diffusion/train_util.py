@@ -1,6 +1,7 @@
 import copy
 import functools
 import os
+import tempfile
 
 import blobfile as bf
 import numpy as np
@@ -229,9 +230,33 @@ class TrainLoop:
             logger.logkv("lg_loss_scale", self.lg_loss_scale)
     
     def save(self):
-        os.makedirs(os.path.dirname(os.path.abspath(self.model_save_path)), exist_ok=True)
-        th.save(self.model.state_dict(), self.model_save_path)
-        tqdm.write(f'sketch knitter model save at: {self.model_save_path}')
+        temp_path = None
+        try:
+            save_path = os.path.abspath(self.model_save_path)
+            save_dir = os.path.dirname(save_path)
+            os.makedirs(save_dir, exist_ok=True)
+            # Keep both files on the same filesystem for atomic replacement.
+            with tempfile.NamedTemporaryFile(
+                mode="wb", dir=save_dir, prefix=os.path.basename(save_path) + ".",
+                suffix=".tmp", delete=False,
+            ) as temp_file:
+                temp_path = temp_file.name
+                th.save(self.model.state_dict(), temp_file)
+                temp_file.flush()
+                os.fsync(temp_file.fileno())
+            os.replace(temp_path, save_path)
+            tqdm.write(f'sketch knitter model save at: {self.model_save_path}')
+        except Exception as exc:
+            tqdm.write(
+                f'WARNING: failed to save weights to {self.model_save_path}: '
+                f'{type(exc).__name__}: {exc}. Continuing training.'
+            )
+        finally:
+            if temp_path is not None and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError as exc:
+                    tqdm.write(f'WARNING: could not remove temporary weights {temp_path}: {exc}')
         #
         # def save_checkpoint(rate, params):
         #     state_dict = self._master_params_to_state_dict(params)
